@@ -1,0 +1,9 @@
+[submodule "L298N"]
+	path = L298N
+	url = https://github.com/AndreaLombardo/L298N
+[submodule "PsxNewLib"]
+	path = PsxNewLib
+	url = https://github.com/SukkoPera/PsxNewLib
+[submodule "DigitalIO"]
+	path = DigitalIO
+	url = https://github.com/SukkoPera/DigitalIO
