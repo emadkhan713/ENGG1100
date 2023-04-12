@@ -1,8 +1,9 @@
 // jump to line 122 for relevant definitions
 #include <DigitalIO.h>
 #include <PsxControllerBitBang.h>
-
+#include <L298NX2.h>
 #include <avr/pgmspace.h>
+
 typedef const __FlashStringHelper * FlashStr;
 typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper *> (s)
@@ -119,6 +120,9 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 
 
 
+// PWM pins are 3, 5, 6, 9, 10, 11
+// need 4 PWM pins (2 motor, 1 pump, )
+
 // define pins for PS2 controller
 const byte PIN_PS2_ATT = 10;
 const byte PIN_PS2_CMD = 11;
@@ -128,31 +132,33 @@ const byte PIN_PS2_CLK = 13;
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
 
-PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
+// define pins for motor driver
+const uint8_t PIN_L298_ENA = 3
+const uint8_t PIN_L298_IN1 = 2
+const uint8_t PIN_L298_IN2 = 4
 
+const uint8_t PIN_L298_ENB = 5
+const uint8_t PIN_L298_IN3 = 7
+const uint8_t PIN_L298_IN4 = 8
+
+// initialise PS2 controller
+PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
 boolean haveController = false;
 
-// define pins for Motor Driver
-const byte PIN_L298_ENA = 2
-const byte PIN_L298_IN1 = 3
-const byte PIN_L298_IN2 = 4
-
-const byte PIN_L298_ENB = 5
-const byte PIN_L298_IN3 = 6
-const byte PIN_L298_IN4 = 7
+// initialise motor driver
+L298NX2 motors(PIN_L298_ENA,
+               PIN_L298_IN1,
+               PIN_L298_IN2,
+               PIN_L298_ENB,
+               PIN_L298_IN3,
+               PIN_L298_IN4);
 
 void setup () {
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
-	
-	fastPinMode (PIN_L298_ENA, OUTPUT);
-	fastPinMode (PIN_L298_IN1, OUTPUT);
-	fastPinMode (PIN_L298_IN2, OUTPUT);
 
-	fastPinMode (PIN_L298_ENB, OUTPUT);
-	fastPinMode (PIN_L298_IN3, OUTPUT);
-	fastPinMode (PIN_L298_IN4, OUTPUT);
-	
+  psx.begin()
+
 	delay (300);
 
 	Serial.begin (115200);
@@ -160,12 +166,49 @@ void setup () {
 }
  
 void loop () {
-	static byte slx, sly, srx, sry;
+	
+  psx.read()
+
+  if (psx.enableAnalogButtons ()) {
+    uint8_t forwardSpeed = psx.getAnalogButton(PSB_R2)
+    uint8_t backwardSpeed = psx.getAnalogButton(PSB_L2)
+  } else {
+    uint8_t forwardSpeed = 128
+    uint8_t backwardSpeed = 128 
+  }
+
+  if (psx.noButtonPressed ()) {
+    motors.stop()
+  }
+
+  if (psx.buttonPressed (PSB_R2)) {
+    motors.setSpeed(backwardSpeed)
+    motors.forward()
+    Serial.print(F("Moving FORWARDS at speed "))
+    Serial.println(forwardSpeed)
+  }
+
+  if (psx.buttonPressed (PSB_L2)) {
+    motors.setSpeed(backwardSpeed)
+    motors.backward()
+    Serial.print(F("Moving BACKWARD at speed "))
+    Serial.println(backwardSpeed)
+  }
+
+  // uncomment to debug controller
+  // PSXInfoLoop ()
+
+  delay (1000 / 60)  // 60Hz polling rate
+
+}
+
+void PSXInfoLoop () {
+  static byte slx, sly, srx, sry;
 	
 	fastDigitalWrite (PIN_HAVECONTROLLER, haveController);
 	
 	if (!haveController) {  // if the controller isn't connected
-		if (psx.begin ()) {
+		if (psx.begin ()) {   // if the controller can be initialised
 			Serial.println (F("Controller found!"));
 			delay (300);
 			if (!psx.enterConfigMode ()) {
@@ -181,7 +224,7 @@ void loop () {
 				}
 				
 				//~ if (!psx.setAnalogMode (false)) {
-					//~ Serial.println (F("Cannot disable analog mode"));
+				  //~ Serial.println (F("Cannot disable analog mode"));
 				//~ }
 				//~ delay (10);
 				
@@ -196,11 +239,11 @@ void loop () {
 			
 			haveController = true;
 		}
-	} else {
-		if (!psx.read ()) {
+	} else {                // the controller is connected
+		if (!psx.read ()) {   // the controller can't be read
 			Serial.println (F("Controller lost :("));
 			haveController = false;
-		} else {
+		} else {              // the controller is responding
 			fastDigitalWrite (PIN_BUTTONPRESS, !!psx.getButtonWord ());
 			dumpButtons (psx.getButtonWord ());
 
@@ -221,7 +264,4 @@ void loop () {
 			}
 		}
 	}
-
-	
-	delay (1000 / 60);
 }
