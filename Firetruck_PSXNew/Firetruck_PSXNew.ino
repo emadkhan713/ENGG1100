@@ -124,22 +124,22 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 // need 4 PWM pins (2 motor, 1 pump, )
 
 // define pins for PS2 controller
-const byte PIN_PS2_ATT = 10;
-const byte PIN_PS2_CMD = 11;
-const byte PIN_PS2_DAT = 12;
-const byte PIN_PS2_CLK = 13;
+const byte PIN_PS2_ATT = 4;
+const byte PIN_PS2_CMD = 3;
+const byte PIN_PS2_DAT = 2;
+const byte PIN_PS2_CLK = 5;
 
 const byte PIN_BUTTONPRESS = A0;
 const byte PIN_HAVECONTROLLER = A1;
 
 // define pins for motor driver
-const uint8_t PIN_L298_ENA = 3
-const uint8_t PIN_L298_IN1 = 2
-const uint8_t PIN_L298_IN2 = 4
+const uint8_t PIN_L298_ENA;
+const uint8_t PIN_L298_IN1;
+const uint8_t PIN_L298_IN2;
 
-const uint8_t PIN_L298_ENB = 5
-const uint8_t PIN_L298_IN3 = 7
-const uint8_t PIN_L298_IN4 = 8
+const uint8_t PIN_L298_ENB;
+const uint8_t PIN_L298_IN3;
+const uint8_t PIN_L298_IN4;
 
 // initialise PS2 controller
 PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
@@ -156,8 +156,9 @@ L298NX2 motors(PIN_L298_ENA,
 void setup () {
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
-
-  psx.begin()
+	pinMode (13, OUTPUT); // emulating L298N using UQ Innovate PCB (PWM effectively)
+	digitalWrite(13, LOW);  //start with no movement
+	psx.begin();
 
 	delay (300);
 
@@ -167,38 +168,25 @@ void setup () {
  
 void loop () {
 	
-  psx.read()
+  psx.read();
 
-  if (psx.enableAnalogButtons ()) {
-    uint8_t forwardSpeed = psx.getAnalogButton(PSB_R2)
-    uint8_t backwardSpeed = psx.getAnalogButton(PSB_L2)
+  if (psx.buttonPressed(PSB_R2)) {
+    motors.forward();
+    digitalWrite(13, HIGH); // allow flow to motors
+    Serial.println(F("Moving FORWARDS"));
+  } else if (psx.buttonPressed(PSB_L2)) {
+    motors.backward();
+    digitalWrite(13, LOW);  // stop flow to motors
+    Serial.println(F("Moving BACKWARDS"));
   } else {
-    uint8_t forwardSpeed = 128
-    uint8_t backwardSpeed = 128 
+    motors.stop();
+    digitalWrite(13, LOW);
+    Serial.println(F("Not moving"));
   }
 
-  if (psx.noButtonPressed ()) {
-    motors.stop()
-  }
-
-  if (psx.buttonPressed (PSB_R2)) {
-    motors.setSpeed(backwardSpeed)
-    motors.forward()
-    Serial.print(F("Moving FORWARDS at speed "))
-    Serial.println(forwardSpeed)
-  }
-
-  if (psx.buttonPressed (PSB_L2)) {
-    motors.setSpeed(backwardSpeed)
-    motors.backward()
-    Serial.print(F("Moving BACKWARD at speed "))
-    Serial.println(backwardSpeed)
-  }
-
+  
   // uncomment to debug controller
-  // PSXInfoLoop ()
-
-  delay (1000 / 60)  // 60Hz polling rate
+  delay (1000 / 30); // 60Hz polling rate
 
 }
 
