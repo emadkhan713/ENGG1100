@@ -141,6 +141,9 @@ const uint8_t PIN_L298_ENB;
 const uint8_t PIN_L298_IN3;
 const uint8_t PIN_L298_IN4;
 
+const uint8_t M1 = 12;
+const uint8_t E1 = 10;
+
 // initialise PS2 controller
 PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK> psx;
 boolean haveController = false;
@@ -156,8 +159,8 @@ L298NX2 motors(PIN_L298_ENA,
 void setup () {
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
-	pinMode (13, OUTPUT); // emulating L298N using UQ Innovate PCB (PWM effectively)
-	digitalWrite(13, LOW);  //start with no movement
+	pinMode (M1, OUTPUT); // emulating L298N using UQ Innovate PCB (PWM effectively)
+	digitalWrite(M1, LOW);  //start with no movement
 	psx.begin();
 
 	delay (300);
@@ -172,15 +175,18 @@ void loop () {
 
   if (psx.buttonPressed(PSB_R2)) {
     motors.forward();
-    digitalWrite(13, HIGH); // allow flow to motors
+    digitalWrite(M1, LOW); // allow flow to motors
+    digitalWrite(E1, 255);
     Serial.println(F("Moving FORWARDS"));
   } else if (psx.buttonPressed(PSB_L2)) {
     motors.backward();
-    digitalWrite(13, LOW);  // stop flow to motors
+    digitalWrite(M1, HIGH);  // stop flow to motors
+    digitalWrite(E1, 255);
     Serial.println(F("Moving BACKWARDS"));
   } else {
     motors.stop();
-    digitalWrite(13, LOW);
+    digitalWrite(E1, 0);
+    
     Serial.println(F("Not moving"));
   }
 
