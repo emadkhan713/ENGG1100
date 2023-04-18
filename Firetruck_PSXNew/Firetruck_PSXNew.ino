@@ -135,18 +135,17 @@ PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK>
   psx;
 boolean haveController = false;
 
+
 const uint8_t PIN_MOTOR_DIRECTION = 12;
 const uint8_t PIN_MOTOR_SPEED = 10;
-
-const uint8_t PIN_PUMP_ENABLE = 8;
 const uint8_t PIN_PUMP_SPEED = 9;  // PWM pin
+const uint8_t PIN_SERVO_H = 6;
+const uint8_t PIN_SERVO_V = 7;
 
-const uint8_t PIN_SERVO_H = A2;
-const uint8_t PIN_SERVO_V = A3;
-
-const uint8_t PUMP_STEP = 39;      // approximately 15% increment of 255
-static uint8_t PWM_PUMP_MODE = 0;
-static uint8_t PWM_PUMP_SPEED = 39*2;
+static bool PUMP_ENABLED = false;
+static uint8_t PUMP_MODE = 0;
+const uint8_t PUMP_STEP = 39;  // approximately 15% increment of 255
+static uint8_t PUMP_SPEED = PUMP_STEP * 2;
 
 Servo horizontal;
 Servo vertical;
@@ -160,13 +159,11 @@ void setup() {
 
   pinMode(PIN_MOTOR_DIRECTION, OUTPUT);
   pinMode(PIN_MOTOR_SPEED, OUTPUT);
-  pinMode(PIN_PUMP_MODE, OUTPUT);
   pinMode(PIN_PUMP_SPEED, OUTPUT);
-  
+
   digitalWrite(PIN_MOTOR_DIRECTION, LOW);
   digitalWrite(PIN_MOTOR_SPEED, 0);
-  digitalWrite(PIN_PUMP_MODE, PWM_PUMP_MODE);
-  analogWrite(PIN_PUMP_SPEED, PWM_PUMP_SPEED);
+  analogWrite(PIN_PUMP_SPEED, 0);
 
   horizontal.attach(PIN_SERVO_H);
   vertical.attach(PIN_SERVO_V);
@@ -182,7 +179,7 @@ void setup() {
 void loop() {
   psx.read();
   MotorControl();
-  PumpSpeed();
+  PumpControl();
   NozzleControl();
   //PsxInfoLoop();
   delay(1000 / 60);  // 60Hz polling rate
@@ -200,42 +197,57 @@ void MotorControl() {
   }
 }
 
-void PumpSpeed() {
+void PumpControl() {
   // 5 speed modes
   if (psx.buttonJustPressed(PSB_R1) && (PWM_PUMP_MODE < 4)) {
     PWM_PUMP_MODE++;
-    PWM_PUMP_SPEED += PUMP_STEP;
+    PUMP_SPEED += PUMP_STEP;
   }
   if (psx.buttonJustPressed(PSB_L1) && (PWM_PUMP_MODE > 0)) {
     PWM_PUMP_MODE--;
-    PWM_PUMP_SPEED -= PUMP_STEP;
+    PUMP_SPEED -= PUMP_STEP;
   }
 
-  /* Serial.print(F("Pump info | mode: "));
+  if (psx.buttonJustPressed(PSB_SQUARE) && !PUMP_ENABLED) {
+    PUMP_ENABLED = true;
+  }
+  if (psx.buttonJustPressed(PSB_SQUARE) && PUMP_ENABLED) {
+    PUMP_ENABLED = false;
+  }
+
+  if (PUMP_ENABLED) {
+    analogWrite(PIN_PUMP_SPEED, PUMP_SPEED);
+  } else {
+    analogWrite(PIN_PUMP_SPEED, 0);
+  }
+
+  /* Serial.print(F("Pump info | status: "));
+  Serial.print(PUMP_ENABLED)
+  Serial.print(F(" | mode: "));
   Serial.print(PWM_PUMP_MODE);
   Serial.print(F(" | speed: "));
-  Serial.println(PWM_PUMP_SPEED); */
+  Serial.println(PUMP_SPEED); */
 }
 
 void NozzleControl() {
   // horizontal servo
   if (psx.buttonPressed(PSB_PAD_LEFT) && (ANGLE_SERVO_H > 0)) {
     ANGLE_SERVO_H--;
-    horizontal.write(ANGLE_SERVO_H)
+    horizontal.write(ANGLE_SERVO_H);
   }
   if (psx.buttonPressed(PSB_PAD_RIGHT) && (ANGLE_SERVO_H < 180)) {
     ANGLE_SERVO_H++;
-    horizontal.write(ANGLE_SERVO_H)
+    horizontal.write(ANGLE_SERVO_H);
   }
 
   // vertical servo
   if (psx.buttonPressed(PSB_PAD_UP) && (ANGLE_SERVO_V > 90)) {
     ANGLE_SERVO_V--;
-    vertical.write(ANGLE_SERVO_V)
+    vertical.write(ANGLE_SERVO_V);
   }
   if (psx.buttonPressed(PSB_PAD_DOWN) && (ANGLE_SERVO_V < 180)) {
     ANGLE_SERVO_V++;
-    vertical.write(ANGLE_SERVO_V)
+    vertical.write(ANGLE_SERVO_V);
   }
 
   /* Serial.print(F("Servo info | H: "));

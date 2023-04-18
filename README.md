@@ -8,11 +8,11 @@ An Arduino Uno (CH340), a DualShock 2 wireless gamepad, and both an L298N motor 
 Manual control of the following components:
 - ~~Drive~~
 	- ~~motor direction (L2/R2)~~
-- Fluid Delivery
-	- pump speed (L1/R1)
-	- pump enable and disable (Square/Cross)
-	- horizontal (D-Left/Right)
-	- vertical (D-Up/Down)
+- ~~Fluid Delivery~~
+	- ~~pump speed (L1/R1)~~
+	- ~~pump enable and disable (Square)~~
+	- ~~horizontal (D-Left/Right)~~
+	- ~~vertical (D-Up/Down)~~
 
 ## Excerpt from [PsxNewLib][1] regarding how to connect controller
 [1]: https://github.com/SukkoPera/PsxNewLib/blob/master/README.md#tldr
