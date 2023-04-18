@@ -1,5 +1,6 @@
-// jump to line 122 for relevant definitions
+// jump to line 125 for relevant definitions
 #include <DigitalIO.h>
+#include <Servo.h>
 #include <PsxControllerBitBang.h>
 #include <avr/pgmspace.h>
 
@@ -134,26 +135,41 @@ PsxControllerBitBang<PIN_PS2_ATT, PIN_PS2_CMD, PIN_PS2_DAT, PIN_PS2_CLK>
   psx;
 boolean haveController = false;
 
-const uint8_t MOTOR_DIRECTION = 12;
-const uint8_t MOTOR_SPEED = 10;
+const uint8_t PIN_MOTOR_DIRECTION = 12;
+const uint8_t PIN_MOTOR_SPEED = 10;
 
-const uint8_t PUMP_ENABLE = 8;
-const uint8_t PUMP_SPEED = 9;
-static uint8_t PUMP_SPEED_INFO = 0;
+const uint8_t PIN_PUMP_ENABLE = 8;
+const uint8_t PIN_PUMP_SPEED = 9;  // PWM pin
+
+const uint8_t PIN_SERVO_H = A2;
+const uint8_t PIN_SERVO_V = A3;
+
+const uint8_t PUMP_STEP = 39;      // approximately 15% increment of 255
+static uint8_t PWM_PUMP_MODE = 0;
+static uint8_t PWM_PUMP_SPEED = 39*2;
+
+Servo horizontal;
+Servo vertical;
+
+static uint8_t ANGLE_SERVO_H = 90;
+static uint8_t ANGLE_SERVO_V = 135;
 
 void setup() {
   fastPinMode(PIN_BUTTONPRESS, OUTPUT);
   fastPinMode(PIN_HAVECONTROLLER, OUTPUT);
 
-  pinMode(MOTOR_DIRECTION, OUTPUT);
-  digitalWrite(MOTOR_DIRECTION, LOW);
-  pinMode(MOTOR_SPEED, OUTPUT);
-  digitalWrite(MOTOR_SPEED, 0);
+  pinMode(PIN_MOTOR_DIRECTION, OUTPUT);
+  pinMode(PIN_MOTOR_SPEED, OUTPUT);
+  pinMode(PIN_PUMP_MODE, OUTPUT);
+  pinMode(PIN_PUMP_SPEED, OUTPUT);
+  
+  digitalWrite(PIN_MOTOR_DIRECTION, LOW);
+  digitalWrite(PIN_MOTOR_SPEED, 0);
+  digitalWrite(PIN_PUMP_MODE, PWM_PUMP_MODE);
+  analogWrite(PIN_PUMP_SPEED, PWM_PUMP_SPEED);
 
-  pinMode(PUMP_ENABLE, OUTPUT);
-  digitalWrite(PUMP_ENABLE, 0);
-  pinMode(PUMP_SPEED, OUTPUT);
-  analogWrite(PUMP_SPEED, 0);
+  horizontal.attach(PIN_SERVO_H);
+  vertical.attach(PIN_SERVO_V);
 
   psx.begin();
 
@@ -166,24 +182,66 @@ void setup() {
 void loop() {
   psx.read();
   MotorControl();
-  PumpControl();
+  PumpSpeed();
+  NozzleControl();
+  //PsxInfoLoop();
   delay(1000 / 60);  // 60Hz polling rate
 }
 
 void MotorControl() {
   if (psx.buttonPressed(PSB_R2)) {
-    digitalWrite(MOTOR_DIRECTION, LOW);
-    digitalWrite(MOTOR_SPEED, 255);
+    digitalWrite(PIN_MOTOR_DIRECTION, LOW);
+    digitalWrite(PIN_MOTOR_SPEED, 255);
   } else if (psx.buttonPressed(PSB_L2)) {
-    digitalWrite(MOTOR_DIRECTION, HIGH);
-    digitalWrite(MOTOR_SPEED, 255);
+    digitalWrite(PIN_MOTOR_DIRECTION, HIGH);
+    digitalWrite(PIN_MOTOR_SPEED, 255);
   } else {
-    digitalWrite(MOTOR_SPEED, 0);
+    digitalWrite(PIN_MOTOR_SPEED, 0);
   }
 }
 
-void PumpControl() {
-  
+void PumpSpeed() {
+  // 5 speed modes
+  if (psx.buttonJustPressed(PSB_R1) && (PWM_PUMP_MODE < 4)) {
+    PWM_PUMP_MODE++;
+    PWM_PUMP_SPEED += PUMP_STEP;
+  }
+  if (psx.buttonJustPressed(PSB_L1) && (PWM_PUMP_MODE > 0)) {
+    PWM_PUMP_MODE--;
+    PWM_PUMP_SPEED -= PUMP_STEP;
+  }
+
+  /* Serial.print(F("Pump info | mode: "));
+  Serial.print(PWM_PUMP_MODE);
+  Serial.print(F(" | speed: "));
+  Serial.println(PWM_PUMP_SPEED); */
+}
+
+void NozzleControl() {
+  // horizontal servo
+  if (psx.buttonPressed(PSB_PAD_LEFT) && (ANGLE_SERVO_H > 0)) {
+    ANGLE_SERVO_H--;
+    horizontal.write(ANGLE_SERVO_H)
+  }
+  if (psx.buttonPressed(PSB_PAD_RIGHT) && (ANGLE_SERVO_H < 180)) {
+    ANGLE_SERVO_H++;
+    horizontal.write(ANGLE_SERVO_H)
+  }
+
+  // vertical servo
+  if (psx.buttonPressed(PSB_PAD_UP) && (ANGLE_SERVO_V > 90)) {
+    ANGLE_SERVO_V--;
+    vertical.write(ANGLE_SERVO_V)
+  }
+  if (psx.buttonPressed(PSB_PAD_DOWN) && (ANGLE_SERVO_V < 180)) {
+    ANGLE_SERVO_V++;
+    vertical.write(ANGLE_SERVO_V)
+  }
+
+  /* Serial.print(F("Servo info | H: "));
+  Serial.print(ANGLE_SERVO_H);
+  Serial.print(F(" | V: "));
+  Serial.println(ANGLE_SERVO_V); */
 }
 
 void PSXInfoLoop() {
