@@ -3,6 +3,8 @@
 #include <PsxControllerBitBang.h>
 #include <avr/pgmspace.h>
 
+/*
+
 // PWM pins are 3, 5, 6, 9, 10, 11
 // require PWM: pump speed
 
@@ -17,6 +19,9 @@ boolean haveController = false;
 
 const uint8_t PIN_MOTOR_DIRECTION = 11;
 const uint8_t PIN_MOTOR_SPEED = 10;
+
+*/
+
 const uint8_t PIN_PUMP_SPEED = 9;  // PWM pin
 const uint8_t PIN_SERVO_H = 7;
 const uint8_t PIN_SERVO_V = 8;
@@ -33,31 +38,70 @@ static uint8_t ANGLE_SERVO_H = 90;  // facing straight by default
 static uint8_t ANGLE_SERVO_V = 150;  // facing 60deg up by default
 
 void setup() {
+  /*
   pinMode(PIN_MOTOR_DIRECTION, OUTPUT);
   pinMode(PIN_MOTOR_SPEED, OUTPUT);
+  */
   pinMode(PIN_PUMP_SPEED, OUTPUT);
 
+  /*
   digitalWrite(PIN_MOTOR_DIRECTION, LOW);
   digitalWrite(PIN_MOTOR_SPEED, 0);
+  */
   analogWrite(PIN_PUMP_SPEED, 0);
 
   horizontal.attach(PIN_SERVO_H);
   vertical.attach(PIN_SERVO_V);
 
-  psx.begin();
+  //psx.begin();
 
-  delay(300);
+  delay(2000);
 
   Serial.begin(115200);
   Serial.println(F("Ready!"));
 }
 
 void loop() {
+  /*
   psx.read();
   MotorControl();
   PumpControl();
-  NozzleControl();
-  delay(1000 / 60);  // 60Hz polling rate
+  NozzleControl(); 
+  delay(1000 / 30);  // 30Hz polling rate
+  */
+  PumpTest();
+  ServoTest();
+}
+
+void PumpTest() {
+  static uint8_t  NUMBER_OF_STEPS = 5
+  static uint16_t WAIT_TIME_MS = 2000
+  
+  for (int i = 0; i < NUMBER_OF_STEPS; i++) {
+    analogWrite(PIN_PUMP_SPEED, PUMP_SPEED + i*PUMP_STEP); 
+    delay(WAIT_TIME_MS)
+  }
+
+  for (int i = NUMBER_OF_STEPS; i > 0; i--) {
+    analogWrite(PIN_PUMP_SPEED, PUMP_SPEED + i*PUMP_STEP);
+    delay(WAIT_TIME_MS)
+  }
+  
+}
+
+void ServoTest() {
+  static uint8_t HALF_PI = 90
+  
+  for (int i = 0; i < 2*HALF_PI; i++) {
+    horizontal.write(i);
+    delay(1000 / 30)
+  }
+
+  for (int j = HALF_PI; j < 2*HALF_PI; j++) {
+    vertical.write(j)
+    delay(1000 / 30)
+  }
+
 }
 
 void MotorControl() {
