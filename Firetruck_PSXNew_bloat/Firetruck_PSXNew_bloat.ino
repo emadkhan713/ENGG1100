@@ -10,7 +10,7 @@ typedef const byte* PGM_BYTES_P;
 #define PSTR_TO_F(s) reinterpret_cast<const __FlashStringHelper*>(s)
 
 // if using PsxInfoLoop, uncomment L12 -> L125 
-/*
+
 const char buttonSelectName[] PROGMEM = "Select";
 const char buttonL3Name[] PROGMEM = "L3";
 const char buttonR3Name[] PROGMEM = "R3";
@@ -122,7 +122,7 @@ const char* const controllerTypeStrings[PSCTRL_MAX + 1] PROGMEM = {
 };
 
 const byte PIN_BUTTONPRESS = A0;
-const byte PIN_HAVECONTROLLER = A1; */
+const byte PIN_HAVECONTROLLER = A1; 
 
 
 // PWM pins are 3, 5, 6, 9, 10, 11
@@ -179,11 +179,11 @@ void setup() {
 }
 
 void loop() {
-  psx.read();
-  MotorControl();
-  PumpControl();
-  NozzleControl();
-  //PsxInfoLoop();
+  //psx.read();
+  //MotorControl();
+  //PumpControl();
+  //NozzleControl();
+  PSXInfoLoop();
   delay(1000 / 60);  // 60Hz polling rate
 }
 
@@ -201,11 +201,11 @@ void MotorControl() {
 
 void PumpControl() {
   // 5 speed modes
-  if (psx.buttonJustPressed(PSB_R1) && (PWM_PUMP_MODE < 4)) {
-    PWM_PUMP_MODE++;
+  if (psx.buttonJustPressed(PSB_R1) && (PUMP_MODE < 4)) {
+    PUMP_MODE++;
     PUMP_SPEED += PUMP_STEP;
-  } else if (psx.buttonJustPressed(PSB_L1) && (PWM_PUMP_MODE > 0)) {
-    PWM_PUMP_MODE--;
+  } else if (psx.buttonJustPressed(PSB_L1) && (PUMP_MODE > 0)) {
+    PUMP_MODE--;
     PUMP_SPEED -= PUMP_STEP;
   } else {
 	;
@@ -261,7 +261,7 @@ void NozzleControl() {
   Serial.println(ANGLE_SERVO_V); */
 }
 
-/*
+
 void PSXInfoLoop() {
   static byte slx, sly, srx, sry;
 
@@ -324,4 +324,4 @@ void PSXInfoLoop() {
       }
     }
   }
-} */
+} 
