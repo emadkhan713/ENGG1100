@@ -28,12 +28,14 @@ L298NX2 driveMotor(IN1, IN2, IN3, IN4);
 
 
 // Fluid Functionality
-const uint8_t PIN_PUMP_SPEED = 8;  // PWM pin
+const uint8_t PIN_PUMP_SPEED = 9;  // PWM pin
 static uint8_t PUMP_MODE = 0;
-const  uint8_t PUMP_STEP = 39;  // approximately 15% increment of 255
-static uint8_t PUMP_SPEED = PUMP_STEP * 2;
+//const  uint8_t PUMP_STEP = 39;  // approximately 15% increment of 255
+//const  uint8_t PUMP_STEP = 64; // approximately 25% increment of 255
+//static uint8_t PUMP_SPEED = 64; // approximately 25% of 255
 
-//int pump = 8;
+
+//int pump = 9;
 boolean pumpOn = false;
 
 Servo panServo; //pan servo is pin 6
@@ -83,67 +85,6 @@ const char* const psxButtonNames[PSX_BUTTONS_NO] PROGMEM = {
 	buttonSquareName
 };
 
-byte psxButtonToIndex (PsxButtons psxButtons) {
-	byte i;
-
-	for (i = 0; i < PSX_BUTTONS_NO; ++i) {
-		if (psxButtons & 0x01) {
-			break;
-		}
-
-		psxButtons >>= 1U;
-	}
-
-	return i;
-}
-
-FlashStr getButtonName (PsxButtons psxButton) {
-	FlashStr ret = F("");
-	
-	byte b = psxButtonToIndex (psxButton);
-	if (b < PSX_BUTTONS_NO) {
-		PGM_BYTES_P bName = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(psxButtonNames[b])));
-		ret = PSTR_TO_F (bName);
-	}
-
-	return ret;
-}
-
-void dumpButtons (PsxButtons psxButtons) {
-	static PsxButtons lastB = 0;
-
-	if (psxButtons != lastB) {
-		lastB = psxButtons;     // Save it before we alter it
-		
-		Serial.print (F("Pressed: "));
-
-		for (byte i = 0; i < PSX_BUTTONS_NO; ++i) {
-			byte b = psxButtonToIndex (psxButtons);
-			if (b < PSX_BUTTONS_NO) {
-				PGM_BYTES_P bName = reinterpret_cast<PGM_BYTES_P> (pgm_read_ptr (&(psxButtonNames[b])));
-				Serial.print (PSTR_TO_F (bName));
-			}
-
-			psxButtons &= ~(1 << b);
-
-			if (psxButtons != 0) {
-				Serial.print (F(", "));
-			}
-		}
-
-		Serial.println ();
-	}
-}
-
-void dumpAnalog (const char *str, const byte x, const byte y) {
-	Serial.print (str);
-	Serial.print (F(" analog: x = "));
-	Serial.print (x);
-	Serial.print (F(", y = "));
-	Serial.println (y);
-}
-
-
 
 const char ctrlTypeUnknown[] PROGMEM = "Unknown";
 const char ctrlTypeDualShock[] PROGMEM = "Dual Shock";
@@ -168,7 +109,7 @@ void setup () {
 	fastPinMode (PIN_BUTTONPRESS, OUTPUT);
 	fastPinMode (PIN_HAVECONTROLLER, OUTPUT);
 
-  pinMode(PIN_PUMP_SPEED, OUTPUT);
+  	pinMode(PIN_PUMP_SPEED, OUTPUT);
 	
 	delay (300);
 
@@ -176,7 +117,7 @@ void setup () {
 	Serial.println (F("Ready!"));
 	//psx.begin();
 
-	driveMotor.stop();
+	//driveMotor.stop();
 
 	panServo.attach(6);
 	tiltServo.attach(7);
@@ -185,67 +126,76 @@ void setup () {
 	tiltServo.write(tiltAngle);
 }
  
- int speed = 3;
+ int servo_speed = 3;
 
 void nozzleControl() {
   // When PSB_PAD_LEFT is pressed, the nozzle moves using the servo pan and tilt. 
 
   //Pan Control
   if (psx.buttonPressed(PSB_PAD_LEFT) && (panAngle < 180)) {
-    Serial.println("Pan Left");
-    panAngle += speed;
+    Serial.println("Pressing Left: Pan Left");
+    panAngle += servo_speed;
     panServo.write(panAngle);
 
   } else if (psx.buttonPressed(PSB_PAD_RIGHT) && (panAngle > 0)) {
-    Serial.println("Pan Right");
-    panAngle -= speed;
+    Serial.println("Pressing Right: Pan Right");
+    panAngle -= servo_speed;
     panServo.write(panAngle);
   }
 
   //Tilt Control
-  if (psx.buttonPressed(PSB_PAD_UP) && (tiltAngle < 180)) {
-    Serial.println("Tilt Up");
-    tiltAngle += speed;
+  if (psx.buttonPressed(PSB_PAD_DOWN) && (tiltAngle < 180)) {
+    Serial.println("Pressing DOWN: Tilt Up");
+    tiltAngle += servo_speed;
     tiltServo.write(tiltAngle);
 
-  } else if (psx.buttonPressed(PSB_PAD_DOWN) && (tiltAngle > 110)) {
-    Serial.println("Tilt Down");
-    tiltAngle -= speed;
+  } else if (psx.buttonPressed(PSB_PAD_UP) && (tiltAngle > 110)) {
+    Serial.println("Pressing UP: Tilt Down");
+    tiltAngle -= servo_speed;
     tiltServo.write(tiltAngle);
   }
 }
 
 void pumpControl() {
-  // 5 speed modes
-  if (psx.buttonJustPressed(PSB_R1) && (PUMP_MODE < 4)) {
+  // 4 speed modes
+  if (psx.buttonJustPressed(PSB_R1) && (PUMP_MODE < 3)) {
     //Serial.println();
     PUMP_MODE++;
-    PUMP_SPEED += PUMP_STEP;
   } else if (psx.buttonJustPressed(PSB_L1) && (PUMP_MODE > 0)) {
     PUMP_MODE--;
     //Serial.println(PUMP_SPEED);
-    PUMP_SPEED -= PUMP_STEP;
-  } else {
-	;
   }
 
   // toggle pump using PWM signal
   if (psx.buttonJustPressed(PSB_SQUARE)) {
-    Serial.println("Pressing Square, PUMP ON OR OFF");
+    Serial.println("Pressing Square: PUMP ON / OFF");
     pumpOn = !pumpOn;
   }
 
-  if (pumpOn == 1) {
-    digitalWrite(PIN_PUMP_SPEED, PUMP_SPEED);
+  if (pumpOn) {
+	if (PUMP_MODE == 0) {
+		analogWrite(PIN_PUMP_SPEED, 64); // 25% of 255
+	} 
+	else if (PUMP_MODE == 1) {
+		analogWrite(PIN_PUMP_SPEED, 127); // 50% of 255
+	} 
+	else if (PUMP_MODE == 2) {
+		analogWrite(PIN_PUMP_SPEED, 191); // 75% of 255
+	}
+	else {
+		analogWrite(PIN_PUMP_SPEED, 255); // 100% of 255
+	}
   } else {
     digitalWrite(PIN_PUMP_SPEED, 0);
   }
+  /*
   Serial.print(F("Pump | status: "));
   Serial.print(pumpOn);
   Serial.print(F(" | mode: "));
   Serial.print(PUMP_MODE);
   Serial.print(F(" | speed: "));
   Serial.println(PUMP_SPEED);
+  */
 
 }
 
@@ -254,11 +204,11 @@ void pumpControl() {
 void motorControl() {
 
   if (psx.buttonPressed (PSB_R2)) {
-    Serial.println("Pressing R2");
+    Serial.println("Pressing R2: Forward");
     driveMotor.forward();
 
   } else if (psx.buttonPressed (PSB_L2)) {
-    Serial.println("Pressing L2");
+    Serial.println("Pressing L2: Backward");
     driveMotor.backward();
 
   } else {
